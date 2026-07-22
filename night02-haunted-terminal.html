@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night 02 — The Haunted Terminal</title>
+<style>
+  :root { --ink:#2f4f3e; --paper:#f5f2ec; --card:#fffdf8; --line:#d8d2c4; --bad:#a33b2e; --gold:#b08a4a;
+          --crt:#0d1410; --glow:#8fd8a0; --dim:#5a7a62; --ghost:#a8c8e8; }
+  html,body { margin:0; background:var(--paper); font-family:Consolas,monospace; color:#3a3a34; }
+  #wrap { max-width:860px; margin:0 auto; padding:14px; }
+  h1 { font-size:18px; margin:4px 0 2px; color:var(--ink); letter-spacing:2px; }
+  #sub { font-size:11px; color:#8a857a; margin-bottom:10px; }
+  #top { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 14px; text-align:center; flex:1; }
+  .stat b { display:block; font-size:22px; color:var(--ink); }
+  .stat span { font-size:10px; color:#8a857a; letter-spacing:1px; }
+  #cabinet { background:var(--ink); border-radius:14px; padding:14px; box-shadow:0 4px 14px rgba(40,60,48,.25); }
+  #screen { background:var(--crt); border-radius:8px; padding:16px 18px; height:52vh; min-height:320px;
+            overflow-y:auto; font-size:13px; line-height:1.55; position:relative; }
+  #screen::after { content:""; position:sticky; display:block; bottom:-16px; left:0; right:0; height:0;
+                   box-shadow:0 0 40px 20px rgba(13,20,16,.6); pointer-events:none; }
+  #screen .s { color:var(--glow); }
+  #screen .d { color:var(--dim); }
+  #screen .g { color:var(--ghost); font-style:italic; }
+  #screen .gold { color:#d8b878; }
+  #screen .bad { color:#d88878; }
+  #screen .me { color:#e8e4d8; }
+  #screen p { margin:0 0 2px; white-space:pre-wrap; word-break:break-word; }
+  .tok { text-decoration:underline; text-decoration-style:dotted; cursor:pointer; }
+  .tok:hover { background:rgba(143,216,160,.15); }
+  #inbar { display:flex; align-items:center; gap:8px; margin-top:10px; background:var(--crt); border-radius:8px; padding:10px 14px; }
+  #prompt { color:var(--glow); font-size:14px; }
+  #cmd { flex:1; background:none; border:none; outline:none; color:#e8e4d8; font:inherit; font-size:14px; caret-color:var(--glow); }
+  #hintbar { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+  #hintbar button { font:inherit; font-size:11px; border:1px solid var(--line); background:var(--card);
+                    border-radius:16px; padding:5px 14px; cursor:pointer; color:#3a3a34; }
+  #hintbar button:active { transform:translateY(1px); }
+  #back { font-size:11px; margin-top:12px; }
+  #back a { color:var(--ink); }
+  #ending { position:fixed; inset:0; background:rgba(40,38,30,.55); display:none; align-items:center; justify-content:center; z-index:10; }
+  #ending .panel { background:var(--card); border-radius:14px; padding:22px 26px; max-width:560px; width:92%; max-height:88vh; overflow-y:auto; }
+  #ending h2 { margin:0 0 8px; color:var(--ink); font-size:16px; letter-spacing:1px; }
+  #ending td { padding:2px 10px 2px 0; font-size:12px; }
+  #ending .verdict { margin-top:10px; font-size:12px; color:var(--ink); line-height:1.6; }
+  #ending .glossary { margin-top:12px; background:#efe9dd; border-radius:10px; padding:10px 14px; font-size:12px; line-height:1.7; }
+  #ending .glossary b { color:var(--ink); }
+  #ending .replay { margin-top:12px; background:var(--crt); border-radius:10px; padding:10px 14px; max-height:150px; overflow-y:auto; }
+  #ending .replay h3 { margin:0 0 6px; font-size:11px; color:var(--glow); letter-spacing:1px; }
+  #ending .replay p { margin:0; font-size:11px; line-height:1.6; }
+  #ending .replay .cli { color:var(--glow); }
+  #ending .replay .raw { color:var(--dim); }
+  #ending button { font:inherit; border:1px solid #bbb; border-radius:8px; background:#fff; padding:8px 14px; cursor:pointer; margin-top:14px; }
+  @media (max-width:600px){ #screen { font-size:12px; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>NIGHT 02 — THE HAUNTED TERMINAL</h1>
+  <div id="sub">the old cabinet at the back of the arcade · no joystick, just a keyboard · tonight it's plugged in</div>
+  <div id="top">
+    <div class="stat"><b id="stGhosts">0/3</b><span>GHOSTS FREED</span></div>
+    <div class="stat"><b id="stRooms">1</b><span>ROOMS FOUND</span></div>
+    <div class="stat"><b id="stFiles">0</b><span>FILES READ</span></div>
+    <div class="stat"><b id="stCmds">0</b><span>COMMANDS</span></div>
+  </div>
+  <div id="cabinet">
+    <div id="screen"></div>
+    <div id="inbar"><span id="prompt">HOME&gt;</span><input id="cmd" autocomplete="off" spellcheck="false" disabled></div>
+  </div>
+  <div id="hintbar">
+    <button data-c="help">HELP</button>
+    <button data-c="look">LOOK</button>
+    <button data-c="back">BACK</button>
+    <button data-c="pockets">POCKETS</button>
+    <button data-c="hint">HINT</button>
+  </div>
+  <div id="back"><a href="index.html">← back to the arcade</a></div>
+</div>
+
+<div id="ending"><div class="panel">
+  <h2>★ THE MACHINE GOES QUIET ★</h2>
+  <table>
+    <tr><td>Ghosts freed</td><td><b id="endGhosts"></b></td></tr>
+    <tr><td>Rooms explored</td><td><b id="endRooms"></b></td></tr>
+    <tr><td>Files read</td><td><b id="endFiles"></b></td></tr>
+    <tr><td>Commands typed</td><td><b id="endCmds"></b></td></tr>
+  </table>
+  <div class="verdict">The machine was never haunted. It was full of unread files.<br>
+  Every command you typed was a question — and it always answered honestly.<br><br>
+  <b>The idea inside:</b> a computer is just rooms, files, and questions. The scary part was only the not-looking.</div>
+  <div class="glossary">And here's the secret: you've been speaking the real language all along.<br>
+    <b>look</b> → the pros type <b>ls</b> &nbsp;·&nbsp; <b>go</b> → <b>cd</b> &nbsp;·&nbsp;
+    <b>back</b> → <b>cd ..</b> &nbsp;·&nbsp; <b>read</b> → <b>cat</b><br>
+    Open any real terminal. It will answer you the same way.</div>
+  <div class="replay"><h3>YOUR WHOLE NIGHT, IN THE MACHINE'S NATIVE TONGUE</h3><div id="replayLines"></div></div>
+  <button onclick="location.href='index.html'">RETURN TO THE ARCADE — CAST YOUR VOTE</button>
+</div></div>
+
+<script>
+'use strict';
+// ---------- the world ----------
+const rooms = {
+  home:       { label:'HOME', parent:null, dirs:['attic','mailroom','greenhouse','basement'], files:['welcome.txt'], things:[], ghost:null },
+  attic:      { label:'ATTIC', parent:'home', dirs:[], files:['dusty_photo.txt'], things:['window'], ghost:'echo' },
+  mailroom:   { label:'MAILROOM', parent:'home', dirs:[], files:['letter.txt'], things:['mail_slot'], ghost:'postmaster' },
+  greenhouse: { label:'GREENHOUSE', parent:'home', dirs:[], files:['seed_packet.txt','cracked_pot.txt'], things:[], ghost:'gardener' },
+  basement:   { label:'BASEMENT', parent:'home', dirs:['boiler_room'], files:['fusebox.txt'], things:[], ghost:null },
+  boiler_room:{ label:'BOILER ROOM', parent:'basement', dirs:[], files:['song_page.txt'], things:[], ghost:null },
+};
+const files = {
+  'welcome.txt': { take:false, text:[
+    ['s','If you can read this, the old machine woke up. Hello.'],
+    ['s','Three of us are still inside. We are not scary. We are just... unfinished.'],
+    ['s','You already know everything you need:'],
+    ['gold','  LOOK to see what is in a room.  GO somewhere.  READ everything.  TALK to us.'],
+    ['d','— the management (retired)'] ]},
+  'dusty_photo.txt': { take:false, text:[
+    ['s','A photograph, described in green letters because the machine cannot show pictures:'],
+    ['s','The arcade in its glory days. Sunlight pouring through the attic window onto the floorboards.'],
+    ['s','Out back, a greenhouse full of flowers. Someone watering them, smiling.'],
+    ['d','On the back, handwriting: "the morning sun always came in up here."'] ]},
+  'letter.txt': { take:false, text:[
+    ['s','An old letter, stamped and sealed, addressed simply: TO EVERYONE WHO EVER PLAYED HERE.'],
+    ['s','"Thank you for the quarters, the laughter, and the high scores.'],
+    ['s',' The machines remember every game. So do I. — The Postmaster"'],
+    ['d','It was never sent.'] ]},
+  'seed_packet.txt': { take:true, short:'seed packet', text:[
+    ['s','A paper seed packet. MOONFLOWER, it says.'],
+    ['gold','"Plant me where the morning sun came in."'],
+    ['d','It feels light enough to TAKE with you.'] ]},
+  'cracked_pot.txt': { take:false, text:[
+    ['s','A cracked flowerpot, empty for years. Someone drew a little smiling sun on it.'],
+    ['gold','Scratched into the clay: "the last seed is not trash — TAKE it with you."'],
+    ['d','You have seen that same little sun drawn somewhere else... on a photo, maybe.'] ]},
+  'fusebox.txt': { take:false, text:[
+    ['s','The old fusebox. One switch is labeled EVERYTHING and it is OFF.'],
+    ['s','Scratched beside it: "the dark gets darker below — but nothing down there bites."'] ]},
+  'song_page.txt': { take:true, short:'torn song page', text:[
+    ['s','A torn page from a songbook, warm from the old boiler. The last verse of a lullaby:'],
+    ['gold','"...and when the lights go out at close, the stars will hum along."'],
+    ['d','Someone upstairs is still humming the start of this. You can TAKE it.'] ]},
+};
+const ghosts = {
+  echo: { label:'THE ECHO', freed:false, room:'attic',
+    talk:[ ['g','A pale shape by the window hums three lines of a lullaby... then stops, stuck.'],
+           ['g','"I have hummed this song for forty years and I cannot remember how it ends."'],
+           ['g','"The last page was torn out. Someone hid it somewhere DARK and WARM."'],
+           ['d','(If you ever find that page, you could GIVE it to the echo.)'] ],
+    talkFreed:[ ['g','The attic is quiet now — the good kind of quiet, like after a song ends properly.'] ] },
+  postmaster: { take:false, label:'THE POSTMASTER', freed:false, room:'mailroom',
+    talk:[ ['g','A ghost in a little postal cap sorts invisible mail, around and around.'],
+           ['g','"One letter left. Just one. But the MAIL SLOT jammed the day we closed,'],
+           ['g',' and I could not bring myself to force it."'],
+           ['d','(Maybe OPEN the mail slot and see what is stuck?)'] ],
+    talkFreed:[ ['g','An empty postal cap sits neatly on the counter. All mail delivered.'] ] },
+  gardener: { label:'THE GARDENER', freed:false, room:'greenhouse',
+    talk:[ ['g','A soft green glow drifts between the empty pots.'],
+           ['g','"I saved one last seed for closing day... and then never planted it.'],
+           ['g',' It needed morning sun, you see. This glass has been dusty for decades."'],
+           ['d','(The seed packet says where it wants to go. Maybe PLANT it there.)'] ],
+    talkFreed:[ ['g','The greenhouse smells faintly of moonflowers now.'] ] },
+};
+
+// ---------- state ----------
+let here = 'home';
+let pockets = [];
+let cmds = 0, filesRead = new Set(), visited = new Set(['home']);
+let slotCleared = false, seedPlanted = false, over = false;
+const hist = []; let histAt = -1;
+
+// ---------- terminal plumbing ----------
+const screen = document.getElementById('screen'), input = document.getElementById('cmd');
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function line(cls, text, clicks){ // clicks: [[word, command], ...] makes words clickable
+  const p = document.createElement('p');
+  let html = esc(text);
+  for (const [word, c] of (clicks||[]))
+    html = html.replace(esc(word), '<span class="tok" data-c="' + esc(c) + '">' + esc(word) + '</span>');
+  p.className = cls; p.innerHTML = html;
+  screen.appendChild(p); screen.scrollTop = screen.scrollHeight;
+}
+function lines(arr){ for (const [c,t] of arr) line(c,t); }
+function blank(){ line('d',''); }
+screen.addEventListener('click', e => {
+  const t = e.target.closest('.tok'); if (!t || over) return;
+  input.value = t.dataset.c; input.focus();
+});
+document.getElementById('hintbar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || over) return;
+  input.value = b.dataset.c; run(); input.focus();
+});
+function stats(){
+  document.getElementById('stGhosts').textContent = Object.values(ghosts).filter(g=>g.freed).length + '/3';
+  document.getElementById('stRooms').textContent = visited.size;
+  document.getElementById('stFiles').textContent = filesRead.size;
+  document.getElementById('stCmds').textContent = cmds;
+}
+
+// ---------- name matching (forgiving: prefixes, ignores .txt) ----------
+function match(word, list){
+  if (!word) return null;
+  const w = word.toLowerCase().replace(/\.txt$/,'');
+  for (const n of list){ const m = n.toLowerCase().replace(/\.txt$/,''); if (m === w) return n; }
+  for (const n of list){ const m = n.toLowerCase().replace(/\.txt$/,''); if (m.startsWith(w) || w.startsWith(m.split('_')[0])) return n; }
+  return null;
+}
+function ghostHere(){ const g = rooms[here].ghost; return g ? ghosts[g] : null; }
+
+// ---------- commands ----------
+function doLook(){
+  const r = rooms[here];
+  line('s','You are in the ' + r.label + '.');
+  if (r.ghost){
+    const g = ghosts[r.ghost];
+    line(g.freed ? 'd' : 'g', (g.freed ? '  ✨ ' : '  👻 ') + g.label + (g.freed ? ' (at peace)' : ' is here. You could TALK to it.'),
+      g.freed ? null : [[g.label, 'talk ' + r.ghost]]);
+  }
+  for (const d of r.dirs) line('s','  📁 ' + d + '/', [[d + '/', 'go ' + d]]);
+  for (const f of r.files) line('s','  📄 ' + f, [[f, 'read ' + f]]);
+  for (const t of r.things) line('s','  ◾ ' + t, [[t, (t === 'window' ? 'look' : 'open ' + t)]]);
+  if (!r.dirs.length && !r.files.length && !r.things.length && !r.ghost) line('d','  (nothing but dust)');
+  if (here === 'attic' && seedPlanted) line('gold','  🌱 a moonflower shoot grows in the light of the window');
+  if (r.parent) line('d','  (BACK returns to ' + rooms[r.parent].label + ')');
+}
+function doGo(arg){
+  const r = rooms[here];
+  if (!arg) return line('d','Go where? Try LOOK to see the doors.');
+  if (arg === '..' || arg === 'back' || arg === 'up') return doBack();
+  const d = match(arg, r.dirs);
+  if (!d) return line('bad','No door called "' + arg + '" here. LOOK around.');
+  here = d; visited.add(d);
+  line('gold','— you step into the ' + rooms[d].label + ' —');
+  doLook();
+}
+function doBack(){
+  const p = rooms[here].parent;
+  if (!p) return line('d','You are already at HOME. There is no further back.');
+  here = p; line('gold','— back to the ' + rooms[p].label + ' —'); doLook();
+}
+function doRead(arg){
+  if (!arg) return line('d','Read what? LOOK shows the files here.');
+  const inPocket = match(arg, pockets);
+  const f = match(arg, rooms[here].files) || inPocket;
+  if (!f) return line('bad','No file called "' + arg + '" here. Files end in .txt — LOOK for them.');
+  filesRead.add(f); lines(files[f].text);
+}
+function doTake(arg){
+  if (!arg) return line('d','Take what?');
+  const f = match(arg, rooms[here].files);
+  if (!f) return line('bad','Nothing called "' + arg + '" to take here.');
+  if (!files[f].take) return line('d','That belongs to the arcade. Better to just READ it.');
+  rooms[here].files = rooms[here].files.filter(x => x !== f);
+  pockets.push(f);
+  line('gold','You tuck the ' + files[f].short + ' into your pocket. (POCKETS to check.)');
+}
+function doPockets(){
+  if (!pockets.length) return line('d','Your pockets hold nothing but lint and courage.');
+  line('s','In your pockets:');
+  for (const f of pockets) line('s','  📄 ' + f + ' — ' + files[f].short, [[f, 'read ' + f]]);
+}
+function doTalk(){
+  const g = ghostHere();
+  if (!g) return line('d','You say hello to the empty room. The room does not mind.');
+  lines(g.freed ? g.talkFreed : g.talk);
+}
+function doOpen(arg){
+  if (here === 'mailroom' && match(arg, ['mail_slot','slot'])){
+    if (slotCleared) return line('d','The mail slot is clear and waiting.');
+    slotCleared = true;
+    lines([ ['s','You work the jammed mail slot... something pops free.'],
+            ['gold','An acorn! A squirrel\'s forgotten treasure, forty years old.'],
+            ['s','The slot swings freely now. Something here could finally be SENT.'] ]);
+    return;
+  }
+  const f = match(arg, rooms[here].files.concat(pockets));
+  if (f) return doRead(f);
+  line('d','Nothing here opens that way. Try LOOK, or READ a file.');
+}
+function doSend(arg){
+  if (here !== 'mailroom') return line('d','There is no mail slot here. The MAILROOM handles sending.');
+  if (!match(arg || 'letter', ['letter.txt','letter','mail'])) return line('d','Send what? There is a letter here...');
+  if (!slotCleared) return line('bad','The letter will not fit — the mail slot is jammed. Maybe OPEN it first.');
+  if (ghosts.postmaster.freed) return line('d','All mail has been delivered. Forever.');
+  free('postmaster', [
+    ['s','You slide the letter into the slot. It whispers away into the dark — delivered, somehow, to everyone.'],
+    ['g','The Postmaster straightens his little cap. "Route complete," he says, and smiles for the first time in forty years.'],
+    ['gold','✨ THE POSTMASTER is at peace. ✨'] ]);
+}
+function doGive(args){
+  const g = ghostHere();
+  if (!g) return line('d','There is no one here to give things to.');
+  const f = match(args.join(' ') || args[0], pockets);
+  if (!f) return line('bad','You are not carrying that. POCKETS shows what you have.');
+  if (g === ghosts.echo && f === 'song_page.txt'){
+    pockets = pockets.filter(x => x !== f);
+    return free('echo', [
+      ['s','You hold out the torn page. The Echo leans close, reading with eyes that remember lamplight.'],
+      ['g','It hums the three old lines... and then, at last, the fourth:'],
+      ['g','"...and when the lights go out at close, the stars will hum along."'],
+      ['gold','✨ THE ECHO is at peace. The whole song, finally. ✨'] ]);
+  }
+  line('d', g.label + ' considers it politely, but that is not what it needs.');
+}
+function doPlant(){
+  const has = match('seed', pockets);
+  if (!has) return line('bad','You have no seed. (The greenhouse might.)');
+  if (here !== 'attic'){
+    return line('g','The Gardener\'s voice drifts through the floorboards: "Not there, love — somewhere the morning sun came in."');
+  }
+  pockets = pockets.filter(x => x !== has); seedPlanted = true;
+  free('gardener', [
+    ['s','You press the moonflower seed into the dust by the attic window — the spot where the sun always landed.'],
+    ['s','A pale green shoot rises, impossibly fast, reaching for the glass.'],
+    ['g','The Gardener drifts up through the floorboards and just... looks at it. "There you are," she says.'],
+    ['gold','✨ THE GARDENER is at peace. ✨'] ]);
+}
+function free(name, story){
+  ghosts[name].freed = true; blank(); lines(story); blank(); stats();
+  if (Object.values(ghosts).every(g => g.freed)) setTimeout(ending, 1800);
+}
+// Hints escalate: nudge → direction → exact command. Asking again digs one tier deeper.
+let hintKey = null, hintLevel = 0;
+function doHint(){
+  let key, tiers;
+  if (!ghosts.echo.freed && pockets.includes('song_page.txt')){
+    key = 'echo_give'; tiers = [
+      'HINT: you are carrying a song. Someone upstairs never got to finish theirs.',
+      'HINT: the Echo is in the attic — and there is a verb for handing things over.',
+      'HINT: in the attic, type: GIVE echo song_page' ];
+  } else if (!ghosts.gardener.freed && pockets.includes('seed_packet.txt')){
+    key = 'gardener_plant'; tiers = [
+      'HINT: the packet says "where the morning sun came in." One file in this arcade remembers sunlight.',
+      'HINT: the dusty photo shows sun pouring through the attic window.',
+      'HINT: in the attic, type: PLANT seed' ];
+  } else if (!ghosts.postmaster.freed && visited.has('mailroom') && !slotCleared){
+    key = 'postmaster_jam'; tiers = [
+      'HINT: the Postmaster keeps glancing at the mail slot.',
+      'HINT: something is physically stuck in that slot — there is a verb for opening things.',
+      'HINT: in the mailroom, type: OPEN mail_slot' ];
+  } else if (!ghosts.postmaster.freed && slotCleared){
+    key = 'postmaster_send'; tiers = [
+      'HINT: the slot is clear now. What did the Postmaster always wish he had done?',
+      'HINT: a letter, a working slot... one verb ends forty years of waiting.',
+      'HINT: in the mailroom, type: SEND letter' ];
+  } else if (!ghosts.echo.freed && visited.has('attic')){
+    key = 'echo_page'; tiers = [
+      'HINT: the Echo said the missing page was somewhere DARK and WARM.',
+      'HINT: the basement goes deeper than one level — the warmest room is where the boiler lives.',
+      'HINT: GO basement, GO boiler_room, then TAKE song_page' ];
+  } else if (!ghosts.gardener.freed && visited.has('greenhouse')){
+    key = 'gardener_seed'; tiers = [
+      'HINT: the Gardener mentioned one last seed. Have you READ everything in the greenhouse?',
+      'HINT: the seed packet is not just for reading — it can be TAKEN.',
+      'HINT: in the greenhouse, type: TAKE seed_packet' ];
+  } else {
+    key = 'explore'; tiers = [
+      'HINT: LOOK in every room, READ every file, TALK to every ghost.',
+      'HINT: four doors lead off HOME — and one of them goes deeper than one level.',
+      'HINT: the ghosts wait in the attic, the mailroom, and the greenhouse.' ];
+  }
+  hintLevel = (key === hintKey) ? Math.min(hintLevel + 1, tiers.length) : 1;
+  hintKey = key;
+  line('gold', tiers[hintLevel - 1]);
+  if (hintLevel < tiers.length) line('d','(ask HINT again and I will say more)');
+}
+function doHelp(){
+  lines([ ['s','The machine understands these questions:'],
+    ['gold','  LOOK              — what is in this room?        (pros type: ls)'],
+    ['gold','  GO <place>        — step through a door           (pros type: cd)'],
+    ['gold','  BACK              — return the way you came       (pros type: cd ..)'],
+    ['gold','  READ <file>       — open a file and read it       (pros type: cat)'],
+    ['gold','  TALK              — speak with a ghost in the room'],
+    ['gold','  TAKE <thing>      — pocket something light'],
+    ['gold','  POCKETS           — what am I carrying?'],
+    ['gold','  GIVE <ghost> <thing> · OPEN <thing> · SEND <thing> · PLANT <thing>'],
+    ['gold','  HINT              — a nudge when stuck'],
+    ['d','You can also click any underlined word on screen.'] ]);
+}
+
+// ---------- parser ----------
+const verbs = {
+  look:doLook, ls:doLook, dir:doLook, l:doLook,
+  go:doGo, cd:doGo, enter:doGo, walk:doGo,
+  back:doBack, up:doBack,
+  read:doRead, cat:doRead, r:doRead,
+  take:doTake, grab:doTake, get:doTake, pickup:doTake,
+  pockets:doPockets, pocket:doPockets, inventory:doPockets, inv:doPockets, i:doPockets,
+  talk:doTalk, speak:doTalk, hello:doTalk, hi:doTalk,
+  open:doOpen, unjam:doOpen,
+  send:doSend, mail:doSend, deliver:doSend,
+  give:null, // handled specially (multi-arg)
+  plant:doPlant, bury:doPlant,
+  hint:doHint, help:doHelp, '?':doHelp,
+};
+function run(){
+  const raw = input.value.trim(); input.value = '';
+  if (!raw || over) return;
+  hist.push(raw); histAt = hist.length;
+  line('me', rooms[here].label + '> ' + raw);
+  cmds++;
+  const parts = raw.toLowerCase().split(/\s+/);
+  const v = parts[0], args = parts.slice(1);
+  if (v === 'give') doGive(args.filter(a => !(a in ghosts) && a !== 'the'));
+  else if (verbs[v]) verbs[v](args.join(' ') || args[0]);
+  else if (v === 'cd' && !args.length) doBack();
+  else line('d','The machine tilts its head, confused by "' + v + '". Try HELP.');
+  document.getElementById('prompt').textContent = rooms[here].label + '>';
+  stats();
+}
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') run();
+  else if (e.key === 'ArrowUp'){ if (histAt > 0){ histAt--; input.value = hist[histAt]; } e.preventDefault(); }
+  else if (e.key === 'ArrowDown'){ histAt = Math.min(hist.length, histAt + 1); input.value = hist[histAt] || ''; }
+});
+
+// ---------- ending ----------
+// Translate the player's night into real terminal commands, in the order they typed them.
+function toCLI(raw){
+  const parts = raw.toLowerCase().split(/\s+/), v = parts[0], rest = parts.slice(1).join(' ');
+  if (['look','ls','dir','l'].includes(v)) return { cli:'ls' };
+  if (['go','cd','enter','walk'].includes(v)) return rest && rest !== '..' ? { cli:'cd ' + rest } : { cli:'cd ..' };
+  if (['back','up'].includes(v)) return { cli:'cd ..' };
+  if (['read','cat','r'].includes(v) && rest){
+    const f = match(rest, Object.keys(files));
+    if (f) return { cli:'cat ' + f };
+  }
+  return { raw:raw.toLowerCase() };
+}
+function ending(){
+  over = true; input.disabled = true;
+  blank();
+  lines([ ['s','The screen flickers once, softly — like a machine exhaling.'],
+          ['d','All files read themselves one last time, then settle.'] ]);
+  document.getElementById('endGhosts').textContent = '3 of 3';
+  document.getElementById('endRooms').textContent = visited.size + ' of ' + Object.keys(rooms).length;
+  document.getElementById('endFiles').textContent = filesRead.size + ' of ' + Object.keys(files).length;
+  document.getElementById('endCmds').textContent = cmds;
+  setTimeout(() => {
+    document.getElementById('ending').style.display = 'flex';
+    const box = document.getElementById('replayLines'), wrap = box.parentElement;
+    let i = 0;
+    const t = setInterval(() => {
+      if (i >= hist.length) return clearInterval(t);
+      const c = toCLI(hist[i++]), p = document.createElement('p');
+      if (c.cli){ p.className = 'cli'; p.textContent = '$ ' + c.cli; }
+      else { p.className = 'raw'; p.textContent = '  ' + c.raw + '   (that one was all yours)'; }
+      box.appendChild(p); wrap.scrollTop = wrap.scrollHeight;
+    }, 140);
+  }, 1600);
+}
+
+// ---------- boot ----------
+const boot = [
+  ['d','NAVETRONIC SYSTEMS — MODEL 02 — (c) a long time ago'],
+  ['d','memory check............ mostly'],
+  ['d','ghosts detected......... 3'],
+  ['s',''],
+  ['s','Someone plugged me in. It has been forty years. Hello.'],
+  ['s','There is a file here for you. When you are ready:'],
+  ['gold','  READ welcome.txt'],
+  ['d','(type it below and press Enter — or just click the gold words)'],
+];
+let bi = 0;
+(function bootLine(){
+  if (bi < boot.length){
+    const [c,t] = boot[bi++];
+    line(c, t, t.includes('READ welcome') ? [['READ welcome.txt','read welcome.txt']] : null);
+    setTimeout(bootLine, 420);
+  } else { input.disabled = false; input.focus(); stats(); }
+})();
+</script>
+</body>
+</html>
