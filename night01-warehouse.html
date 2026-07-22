@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night 01 — The Warehouse</title>
+<style>
+  :root { --ink:#2f4f3e; --paper:#f5f2ec; --card:#fffdf8; --line:#d8d2c4; --bad:#a33b2e; --gold:#b08a4a; }
+  html,body { margin:0; background:var(--paper); font-family:Consolas,monospace; color:#3a3a34; }
+  #wrap { max-width:1080px; margin:0 auto; padding:14px; }
+  h1 { font-size:18px; margin:4px 0 2px; color:var(--ink); letter-spacing:2px; }
+  #sub { font-size:11px; color:#8a857a; margin-bottom:10px; }
+  #top { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; margin-bottom:10px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 14px; text-align:center; }
+  .stat b { display:block; font-size:22px; color:var(--ink); }
+  .stat span { font-size:10px; color:#8a857a; letter-spacing:1px; }
+  #clockwrap { flex:1; min-width:200px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 14px; }
+  #clockbar { height:14px; background:#e9e4d8; border-radius:7px; overflow:hidden; margin-top:6px; }
+  #clockfill { height:100%; width:0%; background:var(--ink); }
+  #clocklabel { font-size:10px; color:#8a857a; letter-spacing:1px; }
+  #chips { display:flex; gap:10px; margin:0 0 10px; flex-wrap:wrap; }
+  .chip { background:#efe9dd; border:1px solid var(--line); border-radius:20px; padding:4px 14px; font-size:12px; }
+  .chip b { color:var(--ink); }
+  .chip.warn { border-color:var(--bad); }
+  #floor { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+  .station { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .station h3 { margin:0; font-size:11px; letter-spacing:1px; color:var(--ink); }
+  .q { font-size:26px; font-weight:bold; min-height:32px; }
+  .q small { font-size:9px; color:#8a857a; display:block; font-weight:normal; }
+  .hot { color:var(--bad); }
+  button { font:inherit; border:1px solid #bbb; border-radius:8px; background:#fff; padding:6px 10px; cursor:pointer; width:100%; }
+  button:active { transform:translateY(1px); }
+  button.go { background:var(--ink); color:#fff; border-color:var(--ink); font-size:12px; }
+  button.hire { font-size:10px; }
+  .worker { font-size:10px; color:#8a857a; text-align:center; min-height:26px; width:100%; }
+  .wbar { height:5px; width:100%; background:#e9e4d8; border-radius:3px; overflow:hidden; }
+  .wfill { height:100%; width:0%; background:var(--gold); }
+  #event { display:none; background:#fff6e8; border:2px solid var(--gold); border-radius:12px; padding:12px 16px; margin:0 0 10px; }
+  #event h4 { margin:0 0 6px; font-size:12px; color:#7a5c22; letter-spacing:1px; }
+  #event p { margin:0 0 10px; font-size:12px; }
+  #event .opts { display:flex; gap:10px; }
+  #event button { font-size:11px; }
+  #event .timer { font-size:10px; color:var(--bad); margin-top:6px; }
+  #toasts { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:4px; z-index:5; pointer-events:none; }
+  .toast { background:#3a3a34; color:#fff; font-size:11px; padding:6px 14px; border-radius:16px; animation:fade 3.4s forwards; }
+  .toast.bad { background:var(--bad); }
+  .toast.gold { background:var(--gold); }
+  @keyframes fade { 0%{opacity:.95} 78%{opacity:.95} 100%{opacity:0} }
+  #report { position:fixed; inset:0; background:rgba(40,38,30,.55); display:none; align-items:center; justify-content:center; z-index:10; }
+  #report .panel { background:var(--card); border-radius:14px; padding:22px 26px; max-width:540px; width:92%; }
+  #report h2 { margin:0 0 8px; color:var(--ink); font-size:16px; letter-spacing:1px; }
+  #report td { padding:2px 10px 2px 0; font-size:12px; }
+  .verdict { margin-top:10px; font-size:12px; color:var(--ink); line-height:1.5; }
+  #report button { margin-top:14px; }
+  @media (max-width:720px){ #floor { grid-template-columns:repeat(3,1fr); } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>NIGHT 01 — THE WAREHOUSE</h1>
+  <div id="sub">the system says one thing · the shelves say another · only counting tells you who's lying</div>
+  <div id="top">
+    <div class="stat"><b id="day">1</b><span>DAY</span></div>
+    <div class="stat"><b id="loaded">0</b><span>ON TRUCK</span></div>
+    <div class="stat"><b id="best">0</b><span>BEST DAY</span></div>
+    <div class="stat"><b id="cash">$80</b><span>CASH</span></div>
+    <div class="stat"><b id="service">100%</b><span>SERVICE LEVEL</span></div>
+    <div id="clockwrap"><span id="clocklabel">CARRIER CUTOFF</span><div id="clockbar"><div id="clockfill"></div></div></div>
+  </div>
+  <div id="chips">
+    <div class="chip">SYSTEM SAYS: <b id="sys">0</b> on hand</div>
+    <div class="chip">ORDERS WAITING: <b id="orders">0</b></div>
+    <div class="chip" id="accchip">ACCURACY: <b id="acc">?? — never counted</b></div>
+    <div class="chip">SHIPPED CLEAN: <b id="clean">0</b></div>
+    <div class="chip warn" id="retchip" style="display:none">RETURNS INBOUND: <b id="rets">0</b></div>
+  </div>
+  <div id="event"><h4 id="etitle"></h4><p id="etext"></p><div class="opts">
+    <button class="go" id="eopt1"></button><button id="eopt2"></button></div>
+    <div class="timer" id="etimer"></div></div>
+  <div id="floor"></div>
+</div>
+<div id="toasts"></div>
+<div id="report"><div class="panel">
+  <h2 id="rtitle">SHIFT REPORT</h2>
+  <div id="rbody"></div>
+  <button class="go" onclick="closeReport()">BACK TO THE FLOOR</button>
+</div></div>
+
+<script>
+'use strict';
+// ---- Night 01.1 — "truth decay" build. The system count and the shelves drift
+// apart through mis-slots, paper ghosts, and posting lag. Picks execute against
+// the RECORD; reality answers. Cycle counts are the only line to the truth.
+const S = {
+  day: 1, t: 0, DAYLEN: 75, cash: 80, running: true,
+  // inventory truth model
+  sys: 0,            // what the system believes is on hand (all the player sees)
+  avail: 0,          // physically on the right shelf, pickable
+  misplaced: 0,      // physically in the building, wrong locator — sys counts it, picks can't find it
+  ghosts: 0,         // paper-only units (accepted manifests) — sys counts them, they do not exist
+  postQ: [],         // putaways physically done, not yet posted to sys (posting lag)
+  recvReal: 0, recvGhost: 0, recvDamaged: 0, dock: [],
+  damagedOnShelf: 0, // shelved damage — picks can grab these
+  q: { picked: 0, pickedBad: 0, staged: 0, stagedBad: 0, loaded: 0, loadedBad: 0 },
+  orders: 0, clean: 0, failed: 0, returnsDue: [], retInbound: 0,
+  lastAcc: null, lastAccDay: null,
+  best: 0, hist: [], phantoms: 0, foundByCount: 0,
+  truckT: 6, orderT: 3, eventT: 24, eventDone: 0, ev: null,
+};
+const DEFS = [
+  { id:'recv',  name:'RECEIVE',    desc:'trucks → dock',    rate:0.50 },
+  { id:'put',   name:'PUTAWAY',    desc:'dock → racks',     rate:0.45 },
+  { id:'count', name:'CYCLE COUNT',desc:'find the truth',   rate:0.10 },
+  { id:'pick',  name:'PICK',       desc:'racks → orders',   rate:0.35 },
+  { id:'pack',  name:'PACK',       desc:'seal + inspect',   rate:0.25 },
+  { id:'ship',  name:'SHIP',       desc:'stage → trailer',  rate:0.50 },
+];
+const W = {}; DEFS.forEach(d => W[d.id] = { hired:false, lvl:0, prog:0, rate:d.rate, lastHtml:'' });
+const HIRE = 60, UP = 40;
+const trueOnHand = () => S.avail + S.misplaced + S.damagedOnShelf;
+
+const floorEl = document.getElementById('floor');
+DEFS.forEach(d => {
+  const el = document.createElement('div'); el.className = 'station'; el.id = 'st-' + d.id;
+  el.innerHTML = `<h3>${d.name}</h3><div class="q" id="q-${d.id}">0<small>${d.desc}</small></div>
+    <button class="go" id="btn-${d.id}">WORK</button>
+    <div class="worker" id="w-${d.id}"><button class="hire" id="hire-${d.id}">HIRE $${HIRE}</button></div>
+    <div class="wbar"><div class="wfill" id="wf-${d.id}"></div></div>`;
+  floorEl.appendChild(el);
+  document.getElementById('btn-' + d.id).onclick = () => { work(d.id); render(); };
+  document.getElementById('hire-' + d.id).onclick = () => hireOrUpgrade(d.id);
+});
+function toast(msg, cls) {
+  const t = document.createElement('div'); t.className = 'toast' + (cls ? ' ' + cls : '');
+  t.textContent = msg; document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+function hireOrUpgrade(id) {
+  const w = W[id];
+  const cost = w.hired ? Math.round(UP * Math.pow(1.7, w.lvl)) : HIRE;
+  if (S.cash < cost) { toast('Not enough cash', 'bad'); return; }
+  S.cash -= cost;
+  if (!w.hired) { w.hired = true; toast(DEFS.find(d=>d.id===id).name + ' worker hired'); }
+  else { w.lvl++; w.rate *= 1.25; toast(DEFS.find(d=>d.id===id).name + ' sped up'); }
+  render();
+}
+function work(id) {
+  switch (id) {
+    case 'recv': {
+      const truck = S.recvReal + S.recvGhost + S.recvDamaged;
+      if (truck < 1) return false;
+      let r = Math.random() * truck;                   // unload one typed unit truck → dock
+      if ((r -= S.recvReal) < 0) { S.recvReal--; S.dock.push('real'); }
+      else if ((r -= S.recvDamaged) < 0) { S.recvDamaged--; S.dock.push('dmg'); }
+      else { S.recvGhost--; S.dock.push('ghost'); }
+      return true;
+    }
+    case 'put': {
+      if (S.dock.length < 1) return false;
+      putawayOne(S.dock.shift());
+      return true;
+    }
+    case 'count': {
+      // Counting finds truth: re-slot a misplaced unit, or purge a ghost from the record
+      if (S.misplaced > 0) { S.misplaced--; S.avail++; S.foundByCount++; toast('Count found product in the wrong slot — re-slotted', 'gold'); }
+      else if (S.ghosts > 0) { S.ghosts--; S.sys = Math.max(0, S.sys - 1); toast('Count killed a paper ghost — record corrected', 'gold'); }
+      else if (S.lastAccDay !== S.day) { /* clean count still updates knowledge */ }
+      else return false;
+      const t = trueOnHand();
+      S.lastAcc = S.sys === 0 && t === 0 ? 100 : Math.round(100 * Math.min(S.sys, t) / Math.max(S.sys, t, 1));
+      S.lastAccDay = S.day;
+      return true;
+    }
+    case 'pick': {
+      if (S.orders < 1 || S.sys < 1) return false;    // the system is the only map the picker has
+      const t = trueOnHand();
+      const phantomShare = Math.max(0, (S.sys - t)) / S.sys;
+      const lostShare = S.misplaced / Math.max(1, S.sys);
+      if (Math.random() < Math.min(0.9, phantomShare + lostShare * 0.5)) {
+        S.sys = Math.max(0, S.sys - 1); if (S.ghosts > 0) S.ghosts--;
+        S.phantoms++;
+        toast('PHANTOM — system said stock, shelf was empty', 'bad');
+        return true;                                   // trip wasted; order still waiting
+      }
+      S.orders--; S.sys = Math.max(0, S.sys - 1);
+      const badShare = S.damagedOnShelf / Math.max(1, S.avail + S.damagedOnShelf);
+      if (Math.random() < badShare) { S.damagedOnShelf--; S.q.pickedBad++; }
+      else { S.avail--; if (Math.random() < 0.04) S.q.pickedBad++; else S.q.picked++; } // 4% wrong-item base
+      return true;
+    }
+    case 'pack': {
+      if (S.q.picked + S.q.pickedBad < 1) return false;
+      const bad = Math.random() < S.q.pickedBad / (S.q.picked + S.q.pickedBad);
+      if (bad) {
+        S.q.pickedBad--;
+        if (Math.random() < 0.7) { S.orders++; toast('Inspection caught a bad pick — order requeued', 'bad'); return true; }
+        S.q.stagedBad++; return true;                 // 30% escape the inspection
+      }
+      S.q.picked--; S.q.staged++; return true;
+    }
+    case 'ship': {
+      if (S.q.staged + S.q.stagedBad < 1) return false;
+      const bad = Math.random() < S.q.stagedBad / (S.q.staged + S.q.stagedBad);
+      if (bad) { S.q.stagedBad--; S.q.loadedBad++; } else { S.q.staged--; S.q.loaded++; }
+      return true;
+    }
+  }
+}
+function moveDockUnit() {
+  // receive one unit off the dock, then it flows to putaway automatically via worker/put pool
+  const pools = [['recvReal', () => putawayOne('real')], ['recvDamaged', () => putawayOne('dmg')], ['recvGhost', () => putawayOne('ghost')]];
+  const total = S.recvReal + S.recvGhost + S.recvDamaged;
+  let r = Math.random() * total;
+  for (const [k, fn] of pools) { r -= S[k]; if (r < 0) { S[k]--; fn(); return true; } }
+  return false;
+}
+function putawayOne(kind) {
+  // physically shelved now; system posts it after a lag (posting integrity)
+  if (kind === 'ghost') { S.postQ.push({ at: S.t + 6, ghost: true }); return; }
+  if (kind === 'dmg') { S.damagedOnShelf++; S.postQ.push({ at: S.t + 6 }); return; }
+  if (Math.random() < 0.07) { S.misplaced++; toast('Pallet slotted to the wrong locator', 'bad'); }
+  else S.avail++;
+  S.postQ.push({ at: S.t + 6 });
+}
+// ---- Events: the two that corrupt truth --------------------------------------
+const EVENTS = [
+  {
+    title: 'RECEIVING DISCREPANCY',
+    text: () => 'Manifest says 8 pallets. The dock crew swears it looks short.',
+    o1: 'ACCEPT MANIFEST (fast)', o2: 'DOCK COUNT (costs time)',
+    pick1: () => { S.recvReal += 6; S.recvGhost += 2; toast('Manifest accepted — the paper says 8'); },
+    pick2: () => { S.recvReal += 6; freeze('recv', 8); toast('Dock counted: 6 real. Record stays true', 'gold'); },
+  },
+  {
+    title: 'DAMAGED PALLET',
+    text: () => 'A crushed pallet at putaway — 4 units, packaging split open.',
+    o1: 'SHELVE THEM ANYWAY', o2: 'SCRAP THE PALLET',
+    pick1: () => { S.damagedOnShelf += 4; S.postQ.push({at:S.t+6},{at:S.t+6},{at:S.t+6},{at:S.t+6}); toast('Shelved. What could go wrong'); },
+    pick2: () => { toast('Scrapped 4 units — truth kept, stock lost', 'gold'); },
+  },
+];
+let frozen = {};
+function freeze(id, secs) { frozen[id] = S.t + secs; }
+function fireEvent() {
+  const ev = EVENTS[S.eventDone % 2]; S.eventDone++;
+  S.ev = { def: ev, until: S.t + 14 };
+  document.getElementById('etitle').textContent = '⚠ ' + ev.title;
+  document.getElementById('etext').textContent = ev.text();
+  document.getElementById('eopt1').textContent = ev.o1;
+  document.getElementById('eopt2').textContent = ev.o2;
+  document.getElementById('event').style.display = 'block';
+  document.getElementById('eopt1').onclick = () => resolveEvent(1);
+  document.getElementById('eopt2').onclick = () => resolveEvent(2);
+}
+function resolveEvent(n) {
+  if (!S.ev) return;
+  (n === 1 ? S.ev.def.pick1 : S.ev.def.pick2)();
+  S.ev = null; document.getElementById('event').style.display = 'none';
+}
+// ---- Day cycle ---------------------------------------------------------------
+function endDay() {
+  // returns from earlier escapes arrive first thing
+  S.returnsDue = S.returnsDue.filter(r => {
+    if (r.day <= S.day) { S.cash -= 12; S.failed++; S.retInbound = Math.max(0, S.retInbound - 1);
+      toast('RETURN: a bad unit came back — $12 fee, customer gone', 'bad'); return false; }
+    return true;
+  });
+  const good = S.q.loaded, bad = S.q.loadedBad;
+  S.q.loaded = 0; S.q.loadedBad = 0;
+  S.cash += (good + bad) * 9;
+  S.clean += good;
+  for (let i = 0; i < bad; i++) { S.returnsDue.push({ day: S.day + 2 }); S.retInbound++; }
+  const expired = Math.floor(S.orders * 0.2);
+  if (expired > 0) { S.orders -= expired; S.failed += expired; toast(expired + ' stale orders cancelled — customers walked', 'bad'); }
+  S.hist.push(good + bad);
+  S.best = Math.max(S.best, good + bad);
+  toast('Truck departed: ' + (good + bad) + ' shipped, +$' + (good + bad) * 9);
+  S.day++; S.t = 0; S.eventT = 15 + Math.random() * 30;
+  if (S.hist.length === 5) shiftReport();
+}
+function shiftReport() {
+  S.running = false;
+  const t = trueOnHand();
+  const acc = S.sys === 0 && t === 0 ? 100 : Math.round(100 * Math.min(S.sys, t) / Math.max(S.sys, t, 1));
+  const sl = S.clean + S.failed === 0 ? 100 : Math.round(100 * S.clean / (S.clean + S.failed));
+  document.getElementById('rtitle').textContent = 'SHIFT REPORT — DAYS 1–' + S.hist.length;
+  document.getElementById('rbody').innerHTML =
+    `<table>
+     <tr><td>Shipped by day:</td><td><b>${S.hist.join(' · ')}</b></td></tr>
+     <tr><td>Service level:</td><td><b>${sl}%</b> (${S.clean} clean / ${S.failed} failed)</td></tr>
+     <tr><td>System says on hand:</td><td><b>${S.sys}</b></td></tr>
+     <tr><td>The shelves actually hold:</td><td><b>${t}</b></td></tr>
+     <tr><td>TRUE accuracy right now:</td><td><b>${acc}%</b>${S.lastAcc !== null ? ' (your last count said ' + S.lastAcc + '%)' : ' (you never counted)'}</td></tr>
+     <tr><td>Phantom picks suffered:</td><td><b>${S.phantoms}</b> wasted trips</td></tr>
+     <tr><td>Units rescued by counting:</td><td><b>${S.foundByCount}</b></td></tr>
+     </table>
+     <div class="verdict">The system is not the shelves. Every gap between those two numbers was paid for in phantom trips, dead orders, and returns. Counting isn't overhead — it's how the map learns the territory.</div>`;
+  document.getElementById('report').style.display = 'flex';
+}
+function closeReport() { document.getElementById('report').style.display = 'none'; S.running = true; }
+
+// ---- Clock -------------------------------------------------------------------
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+  if (S.running) {
+    S.t += dt; S.truckT -= dt; S.orderT -= dt; S.eventT -= dt;
+    if (S.truckT <= 0) { const n = 6 + Math.floor(Math.random() * 4); S.recvReal += n; S.truckT = 16; toast('Inbound truck: ' + n + ' pallets'); }
+    if (S.orderT <= 0) { S.orders++; S.orderT = 2.2; }
+    if (S.eventT <= 0 && !S.ev) { fireEvent(); S.eventT = 9999; }
+    if (S.ev) {
+      const left = Math.ceil(S.ev.until - S.t);
+      document.getElementById('etimer').textContent = 'No decision in ' + left + 's = the fast option decides for you';
+      if (left <= 0) { toast('You looked away. The floor chose speed.', 'bad'); resolveEvent(1); }
+    }
+    S.postQ = S.postQ.filter(p => { if (p.at <= S.t) { S.sys++; return false; } return true; });
+    for (const d of DEFS) {
+      const w = W[d.id]; if (!w.hired) continue;
+      if (frozen[d.id] && frozen[d.id] > S.t) continue;
+      w.prog += w.rate * dt;
+      while (w.prog >= 1) { w.prog -= 1; if (!work(d.id)) { w.prog = 0; break; } }
+    }
+    if (S.t >= S.DAYLEN) endDay();
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+function render() {
+  const el = id => document.getElementById(id);
+  el('day').textContent = S.day;
+  el('loaded').textContent = S.q.loaded + S.q.loadedBad;
+  el('best').textContent = S.best;
+  el('cash').textContent = '$' + Math.floor(S.cash);
+  const sl = S.clean + S.failed === 0 ? 100 : Math.round(100 * S.clean / (S.clean + S.failed));
+  el('service').textContent = sl + '%';
+  el('service').style.color = sl < 85 ? 'var(--bad)' : 'var(--ink)';
+  el('sys').textContent = S.sys;
+  el('orders').textContent = S.orders;
+  el('acc').textContent = S.lastAcc === null ? '?? — never counted' : S.lastAcc + '% as of day ' + S.lastAccDay;
+  el('accchip').classList.toggle('warn', S.lastAcc === null || S.day - S.lastAccDay >= 2);
+  el('clean').textContent = S.clean;
+  el('retchip').style.display = S.retInbound > 0 ? '' : 'none';
+  el('rets').textContent = S.retInbound;
+  el('clockfill').style.width = (S.t / S.DAYLEN * 100) + '%';
+  el('clockfill').style.background = S.t / S.DAYLEN > 0.8 ? 'var(--bad)' : 'var(--ink)';
+  const truck = S.recvReal + S.recvGhost + S.recvDamaged;
+  const qmap = { recv:truck, put:S.dock.length, count:null, pick:Math.min(S.orders, S.sys), pack:S.q.picked + S.q.pickedBad, ship:S.q.staged + S.q.stagedBad };
+  for (const d of DEFS) {
+    const qe = el('q-' + d.id);
+    if (d.id === 'count') qe.firstChild.textContent = S.misplaced + S.ghosts > 0 ? '…' : '✓';
+    else { const q = qmap[d.id]; qe.firstChild.textContent = q; qe.classList.toggle('hot', typeof q === 'number' && q > 12); }
+    const w = W[d.id], we = el('w-' + d.id);
+    if (w.hired) {
+      const cost = Math.round(UP * Math.pow(1.7, w.lvl));
+      const html = `worker L${w.lvl + 1} · ${w.rate.toFixed(2)}/s <button class="hire" onclick="hireOrUpgrade('${d.id}')">SPEED +25% $${cost}</button>`;
+      if (w.lastHtml !== html) { we.innerHTML = html; w.lastHtml = html; }
+    }
+    el('wf-' + d.id).style.width = (w.hired ? (w.prog % 1) * 100 : 0) + '%';
+  }
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

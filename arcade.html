@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The One-Night Arcade</title>
+<style>
+  :root { --ink:#2f4f3e; --paper:#f5f2ec; --card:#fffdf8; --line:#d8d2c4; --gold:#b08a4a; }
+  html,body { margin:0; background:var(--paper); font-family:Consolas,monospace; color:#3a3a34; }
+  #wrap { max-width:860px; margin:0 auto; padding:26px 16px; }
+  #marquee { text-align:center; background:var(--ink); color:#fff; border-radius:14px; padding:18px 10px 14px; letter-spacing:4px; }
+  #marquee h1 { margin:0; font-size:24px; }
+  #marquee p { margin:6px 0 0; font-size:11px; color:#cfe0d5; letter-spacing:2px; }
+  #rules { font-size:12px; color:#6f6a5e; text-align:center; margin:14px 0 22px; line-height:1.6; }
+  #shelf { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+  .cart { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:8px; }
+  .cart h2 { margin:0; font-size:13px; color:var(--ink); letter-spacing:1px; }
+  .cart .tag { font-size:10px; color:#8a857a; }
+  .cart a.play { display:block; text-align:center; background:var(--ink); color:#fff; text-decoration:none;
+                 border-radius:8px; padding:9px; font-size:13px; letter-spacing:2px; }
+  .votes { display:flex; gap:6px; }
+  .votes button { flex:1; font:inherit; font-size:11px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 2px; cursor:pointer; }
+  .votes button:active { transform:translateY(1px); }
+  .empty { opacity:.55; border-style:dashed; align-items:center; justify-content:center; min-height:120px; text-align:center; }
+  .empty span { font-size:12px; color:#8a857a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="marquee"><h1>★ THE ONE-NIGHT ARCADE ★</h1><p>ONE EVENING · ONE GAME · ONE IDEA INSIDE IT</p></div>
+  <div id="rules">House rules: every cartridge was built in a single night and holds one real idea.<br>
+  Play it, then vote — <b>ARCHIVE</b> it as done, <b>EXPAND</b> it into more nights, or <b>KILL</b> it with honor.</div>
+  <div id="shelf">
+    <div class="cart">
+      <h2>NIGHT 01 — THE WAREHOUSE</h2>
+      <div class="tag">the idea inside: throughput only moves at the constraint</div>
+      <a class="play" href="night01-warehouse.html">INSERT COIN</a>
+      <div class="votes" data-game="night01">
+        <button data-v="archive">🗄 ARCHIVE <b>0</b></button>
+        <button data-v="expand">🚀 EXPAND <b>0</b></button>
+        <button data-v="kill">💀 KILL <b>0</b></button>
+      </div>
+    </div>
+    <div class="cart empty"><span>NIGHT 02<br>— empty slot —<br>the furnace is warm</span></div>
+    <div class="cart empty"><span>NIGHT 03<br>— empty slot —</span></div>
+  </div>
+</div>
+<script>
+'use strict';
+// Votes live in localStorage — the family's verdicts survive the browser closing.
+for (const row of document.querySelectorAll('.votes')) {
+  const game = row.dataset.game;
+  const load = () => { for (const b of row.querySelectorAll('button'))
+    b.querySelector('b').textContent = localStorage.getItem('arcade-' + game + '-' + b.dataset.v) || 0; };
+  for (const b of row.querySelectorAll('button'))
+    b.onclick = () => { const k = 'arcade-' + game + '-' + b.dataset.v;
+      localStorage.setItem(k, (+localStorage.getItem(k) || 0) + 1); load(); };
+  load();
+}
+</script>
+</body>
+</html>
